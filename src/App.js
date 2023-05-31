@@ -53,7 +53,6 @@ export default function App() {
 
     const CYCLE_DURATION = STAGGER * BOXES.length;
     const START_TIME = CYCLE_DURATION + DURATION * 0.5 + OFFSET;
-    // const START_TIME = 0
     // const END_TIME = START_TIME + CYCLE_DURATION;
 
     const LOOP_HEAD = gsap.fromTo(
@@ -66,19 +65,25 @@ export default function App() {
         repeat: -1,
         paused: true,
       })
-
+    
+    // There is one position counter that counts up or down to 10 each loop,
+    // accumulating or decumulating by 10 depending on scroll direction.
+    // Another position counter doesn't accumulate/decumulate with each loop,
+    // but stays between -10 and 10 depending on scroll direction.
     const PLAYHEAD = { position: 0 }
     const POSITION_WRAP = gsap.utils.wrap(0, LOOP_HEAD.duration())
 
+    // tween updates position of PLAYHEAD
     const SCRUB = gsap.to(PLAYHEAD, {
       position: 0,
       onUpdate: () => {
-        // set playhead on totalTime of LOOP_HEAD
-        // and wrap between PLAYHEAD.position and LOOP_HEAD.duration()
+        // wrap PLAYHEAD.position between 0 and 10
+        // and set result as totalTime of LOOP_HEAD
         LOOP_HEAD.totalTime(POSITION_WRAP(PLAYHEAD.position))
+        console.log(`PLAYHEAD.position: ${PLAYHEAD.position}`)
       },
       paused: true,
-      duration: 1, //1 //I think this is how long it takes for a single scroll event to complete
+      duration: 1, //I think this is how long it takes for a single scroll event to complete
       ease: 'power3', //none
     })
 
@@ -86,25 +91,29 @@ export default function App() {
     
     const TRIGGER = ScrollTrigger.create({
       markers: true,
-      // trigger: '#gallery',
       start: 0,
       end: '+=50000',
       horizontal: false,
       pin: '#gallery',
       onUpdate: self => {
+        // SCROLL is a number between start and end values
         const SCROLL = self.scroll()
+        // Go forwards in time:
         if (SCROLL > self.end - 1) {
-          // triggered when scroll reaches end of scroller
-          // Go forwards in time
+          // triggered when scrollbar reaches end of scroller
+          // positive counter counts up
           WRAP(1, 1)
+        // Go backwards in time:
         } else if (SCROLL < 1 && self.direction < 0) {
-          // triggered when scroll reaches start of scroller
-          // Go backwards in time
+          // triggered when scrollbar reaches start of scroller
+          // negative counter counts down
           WRAP(-1, self.end - 1)
         } else {
           // triggered with every scroll event
           // self.progress is a value between 0 and 1
           SCRUB.vars.position = (iteration + self.progress) * LOOP_HEAD.duration()
+          // console.log(`SCRUB.vars.position: ${SCRUB.vars.position}`)
+          // console.log(`iteration: ${iteration}`)
           SCRUB.invalidate().restart()
         }
       }
@@ -113,6 +122,8 @@ export default function App() {
     const WRAP = (iterationDelta, scrollTo) => {
       //counts up or down depending on scroll direction
       iteration += iterationDelta
+      //possible to count too many times by holding the scrollbar offscreen
+      // console.log(`iteration: ${iteration}`)
       //scroll to start (+1px) or end (-1px) of scroller
       TRIGGER.scroll(scrollTo)
       TRIGGER.update()
